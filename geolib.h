@@ -69,16 +69,16 @@ typedef struct {
     Vector2 vector;
     Color color;
     char name;
-} GEOL_Vector2;
+} Geolib_Vector2;
 
 typedef struct {
-    GEOL_Vector2 *items;
+    Geolib_Vector2 *items;
     size_t count;
     size_t capacity;
-} GEOL_Vector2s;
+} Geolib_Vector2s;
 
 typedef struct {
-    GEOL_Vector2s vectors;
+    Geolib_Vector2s vectors;
     Rectangle plane_rect;
     size_t unit_count;
     float step_size;
@@ -89,8 +89,9 @@ void geolib_add_vector(Geolib *gl, Vector2 v);
 void geolib_draw_plane(Geolib *gl, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color);
 void geolib_dealloc(Geolib *gl);
 void geolib_add_vector(Geolib *gl, Vector2 v);
-void geolib_plot_vec(Geolib *gl, GEOL_Vector2 v);
+void geolib_plot_vec(Geolib *gl, Geolib_Vector2 v);
 void geolib_plot_vecs(Geolib *gl);
+void geolib_draw_vecs_info(Geolib *gl, Vector2 pos, Font font);
 void geolib_update_plane_rect(Geolib *gl, Rectangle new_plane_rect);
 
 Vector2 make_vector2(float x, float y);
@@ -98,7 +99,7 @@ Vector2 make_vector2(float x, float y);
 void draw_cross(Rectangle rect, float thick, Color color);
 void draw_arrow(Vector2 start_point, Vector2 end_point, float thick, float tip_len, float tip_width, Color color);
 void draw_vector(Vector2 v, Vector2 start, float scalar, Color color);
-void draw_vector_info(GEOL_Vector2 v, Vector2 pos, Font font);
+void draw_vector_info(Geolib_Vector2 v, Vector2 pos, Font font);
 
 Vector2 to_cartesian_system(Vector2 v, Vector2 start, float scalar);
 float radians2degrees(float radians);
@@ -124,6 +125,7 @@ const int vec_name_pool[] = {
     'C',
     'D',
     'E',
+    'F',
 };
 
 const Color color_pool[] = {
@@ -132,6 +134,7 @@ const Color color_pool[] = {
     GREEN,
     MAGENTA,
     PURPLE,
+    ORANGE,
 };
 
 static_assert(ARRAY_LEN(vec_name_pool) == ARRAY_LEN(color_pool), "The pools are not equal in size, please make sure they are");
@@ -152,16 +155,16 @@ void geolib_dealloc(Geolib *gl)
 
 void geolib_add_vector(Geolib *gl, Vector2 v)
 {
-    size_t pool_index = gl->vectors.count;
+    size_t pool_index = fmodf(gl->vectors.count, ARRAY_LEN(color_pool));
 
-    da_append(&gl->vectors, ((GEOL_Vector2) {
-            .vector = v,
-            .color = color_pool[pool_index],
-            .name = vec_name_pool[pool_index]
-        }));
+    da_append(&gl->vectors, ((Geolib_Vector2) {
+                .vector = v,
+                .color = color_pool[pool_index],
+                .name = vec_name_pool[pool_index]
+            }));
 }
 
-void geolib_plot_vec(Geolib *gl, GEOL_Vector2 v)
+void geolib_plot_vec(Geolib *gl, Geolib_Vector2 v)
 {
     draw_vector(v.vector,
                 make_vector2(gl->plane_rect.x + gl->plane_rect.width/2, gl->plane_rect.y + gl->plane_rect.height/2),
@@ -172,6 +175,15 @@ void geolib_plot_vecs(Geolib *gl)
 {
     for (size_t i = 0; i < gl->vectors.count; ++i) {
         geolib_plot_vec(gl, gl->vectors.items[i]);
+    }
+}
+
+// TODO: Make this function accept a rectangle in which it should fit
+void geolib_draw_vecs_info(Geolib *gl, Vector2 pos, Font font)
+{
+    for (size_t i = 0; i < gl->vectors.count; ++i) {
+        draw_vector_info(gl->vectors.items[i], pos, font);
+        pos.y += font.baseSize;
     }
 }
 
@@ -236,6 +248,30 @@ void geolib_draw_plane(Geolib *gl, Vector2 unit_marker_size, Font font, float fo
     }
 }
 
+void draw_arrow(Vector2 start_point, Vector2 end_point, float thick, float tip_len, float tip_width, Color color)
+{
+    Vector2 diff = Vector2Subtract(end_point, start_point);
+    float diff_len = Vector2Length(diff);
+    diff = Vector2Scale(diff, (diff_len-tip_len)/diff_len);
+    Vector2 tip_start = Vector2Add(diff, start_point);
+    DrawLineEx(start_point, tip_start, thick, color);
+
+    Vector2 left = Vector2Add(tip_start, polar_to_coords(tip_width/2, get_vec_angle(diff) - 90));
+    Vector2 right = Vector2Add(tip_start, polar_to_coords(tip_width/2, get_vec_angle(diff) + 90));
+    DrawTriangle(end_point, left, right, color);
+}
+
+void draw_vector(Vector2 v, Vector2 start, float scalar, Color color)
+{
+    Vector2 cartesian_point = to_cartesian_system(v, start, scalar);
+    draw_arrow(start, cartesian_point, 3, 20, 10, color);
+}
+
+void draw_vector_info(Geolib_Vector2 v, Vector2 pos, Font font)
+{
+    DrawTextEx(font, TextFormat("%c = (%.2f, %.2f)", v.name, v.vector.x, v.vector.y), pos, font.baseSize, 1, v.color);
+}
+
 Vector2 to_cartesian_system(Vector2 v, Vector2 start, float scalar)
 {
     v = Vector2Scale(v, scalar);
@@ -265,29 +301,7 @@ float get_vec_angle(Vector2 v)
     return radians2degrees(atan2f(v.y, v.x));
 }
 
-void draw_arrow(Vector2 start_point, Vector2 end_point, float thick, float tip_len, float tip_width, Color color)
-{
-    Vector2 diff = Vector2Subtract(end_point, start_point);
-    float diff_len = Vector2Length(diff);
-    diff = Vector2Scale(diff, (diff_len-tip_len)/diff_len);
-    Vector2 tip_start = Vector2Add(diff, start_point);
-    DrawLineEx(start_point, tip_start, thick, color);
-
-    Vector2 left = Vector2Add(tip_start, polar_to_coords(tip_width/2, get_vec_angle(diff) - 90));
-    Vector2 right = Vector2Add(tip_start, polar_to_coords(tip_width/2, get_vec_angle(diff) + 90));
-    DrawTriangle(end_point, left, right, color);
-}
-
-void draw_vector(Vector2 v, Vector2 start, float scalar, Color color)
-{
-    Vector2 cartesian_point = to_cartesian_system(v, start, scalar);
-    draw_arrow(start, cartesian_point, 3, 20, 10, color);
-    // DrawCircleV(cartesian_point, 3, WHITE); // NOTE: Not sure if the user ever wants this
-}
-
-void draw_vector_info(GEOL_Vector2 v, Vector2 pos, Font font)
-{
-    DrawTextEx(font, TextFormat("%c = (%f, %f)", v.name, v.vector.x, v.vector.y), pos, font.baseSize, 1, v.color);
-}
-
 #endif // GEOLIB_IMPLEMENTATION
+
+// TODO: make this library library agnostic: This library should work with other libraries such as sdl2
+// TODO: find a better way to let the user modify the vectors
