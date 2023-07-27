@@ -9,21 +9,66 @@
 #include <raylib.h>
 #include <raymath.h>
 
+#ifndef ARRAY_LEN
 #define ARRAY_LEN(arr) sizeof(arr)/sizeof(arr[0])
-#define FONT_SIZE 30
+#endif
 
+#ifndef UNIMPLEMENTED
 #define UNIMPLEMENTED(...)                                              \
     do {                                                                \
         printf("%s:%d: UNIMPLEMENTED: %s\n", __FILE__, __LINE__, __VA_ARGS__); \
         exit(1);                                                        \
     } while (0)
+#endif
 
+#ifndef UNUSED
 #define UNUSED(v) (void) (v)
+#endif
+
+#define DA_INIT_CAP 256
+
+#define da_append(da, item)                                             \
+    do {                                                                \
+        if ((da)->count >= (da)->capacity) {                            \
+            (da)->capacity = (da)->capacity == 0 ? DA_INIT_CAP : (da)->capacity*2; \
+            (da)->items = realloc((da)->items, sizeof(*(da)->items)*(da)->capacity); \
+            assert((da)->items != NULL);                                \
+        }                                                               \
+        (da)->items[(da)->count++] = (item);                            \
+    } while (0)
+
+#define da_append_many(da, new_items, new_items_count)                  \
+    do {                                                                \
+        if ((da)->count + new_items >= (da)->capacity) {                \
+            if ((da)->capacity == 0) {                                  \
+                (da)->capacity = DA_INIT_CAP;                           \
+            }                                                           \
+                                                                        \
+            while ((da)->count + new_items_count >= (da)->capacity) {   \
+                (da)->capacity *= 2;                                    \
+            }                                                           \
+            (da)->items = realloc((da)->items, sizeof(*(da)->items)*(da)->capacity); \
+            assert((da)->items != NULL);                                \
+        }                                                               \
+                                                                        \
+        memcpy((da)->items + (da)->count, new_items, new_items_count*sizeof(*(da)->items)); \
+        (da)->count += new_items_count;                                 \
+    } while (0)
+
+#define da_reset(da)                            \
+    do {                                        \
+        if ((da)->items != NULL) {              \
+            free((da)->items);                  \
+            (da)->items = NULL;                 \
+        }                                       \
+        (da)->capacity = 0;                     \
+        (da)->count = 0;                        \
+    } while (0)
 
 typedef struct {
     Vector2 vector;
     Color color;
-    const char *name;
+    char name;
 } GEOL_Vector2;
 
 typedef struct {
@@ -34,20 +79,33 @@ typedef struct {
 
 typedef struct {
     GEOL_Vector2s vectors;
-    Rectangle cartesian_plane_rect;
+    Rectangle plane_rect;
     size_t unit_count;
-} Geo_Lib;
+    float step_size;
+} Geolib;
+
+Geolib geolib_alloc(Rectangle plane_rect, size_t unit_count);
+void geolib_add_vector(Geolib *gl, Vector2 v);
+void geolib_draw_plane(Geolib *gl, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color);
+void geolib_dealloc(Geolib *gl);
+void geolib_add_vector(Geolib *gl, Vector2 v);
+void geolib_plot_vec(Geolib *gl, GEOL_Vector2 v);
+void geolib_plot_vecs(Geolib *gl);
+void geolib_update_plane_rect(Geolib *gl, Rectangle new_plane_rect);
 
 Vector2 make_vector2(float x, float y);
+
 void draw_cross(Rectangle rect, float thick, Color color);
-void draw_cartesian_plane(Rectangle rect, Vector2 step_size, int step_count, Font font, float font_gap, Color cross_color, Color step_color);
+void draw_arrow(Vector2 start_point, Vector2 end_point, float thick, float tip_len, float tip_width, Color color);
+void draw_vector(Vector2 v, Vector2 start, float scalar, Color color);
+void draw_vector_info(GEOL_Vector2 v, Vector2 pos, Font font);
+
 Vector2 to_cartesian_system(Vector2 v, Vector2 start, float scalar);
 float radians2degrees(float radians);
 float degrees2radians(float degrees);
 Vector2 polar_to_coords(float len, float angle);
+
 float get_vec_angle(Vector2 v);
-void draw_arrow(Vector2 start_point, Vector2 end_point, float thick, float tip_len, float tip_width, Color color);
-void draw_vector(Vector2 v, Vector2 start, float scalar);
 
 #endif  // GEOLIB_H_
 
@@ -59,6 +117,74 @@ const int directions[4][2] = {
     {0, -1},
     {0, 1},
 };
+
+const int vec_name_pool[] = {
+    'A',
+    'B',
+    'C',
+    'D',
+    'E',
+};
+
+const Color color_pool[] = {
+    RED,
+    BLUE,
+    GREEN,
+    MAGENTA,
+    PURPLE,
+};
+
+static_assert(ARRAY_LEN(vec_name_pool) == ARRAY_LEN(color_pool), "The pools are not equal in size, please make sure they are");
+
+Geolib geolib_alloc(Rectangle plane_rect, size_t unit_count)
+{
+    Geolib gl = {0};
+    gl.unit_count = unit_count;
+    gl.plane_rect = plane_rect;
+    gl.step_size = plane_rect.width/2 / unit_count;
+    return gl;
+}
+
+void geolib_dealloc(Geolib *gl)
+{
+    da_reset(&gl->vectors);
+}
+
+void geolib_add_vector(Geolib *gl, Vector2 v)
+{
+    size_t pool_index = gl->vectors.count;
+
+    da_append(&gl->vectors, ((GEOL_Vector2) {
+            .vector = v,
+            .color = color_pool[pool_index],
+            .name = vec_name_pool[pool_index]
+        }));
+}
+
+void geolib_plot_vec(Geolib *gl, GEOL_Vector2 v)
+{
+    draw_vector(v.vector,
+                make_vector2(gl->plane_rect.x + gl->plane_rect.width/2, gl->plane_rect.y + gl->plane_rect.height/2),
+                gl->step_size, v.color);
+}
+
+void geolib_plot_vecs(Geolib *gl)
+{
+    for (size_t i = 0; i < gl->vectors.count; ++i) {
+        geolib_plot_vec(gl, gl->vectors.items[i]);
+    }
+}
+
+void geolib_update_plane_rect(Geolib *gl, Rectangle new_plane_rect)
+{
+    if (gl->plane_rect.x == new_plane_rect.x &&
+        gl->plane_rect.y == new_plane_rect.y &&
+        gl->plane_rect.width == new_plane_rect.width &&
+        gl->plane_rect.height == new_plane_rect.height) return;
+
+    gl->plane_rect = new_plane_rect;
+    gl->step_size = gl->plane_rect.width/2 / gl->unit_count;
+}
 
 Vector2 make_vector2(float x, float y)
 {
@@ -73,40 +199,39 @@ void draw_cross(Rectangle rect, float thick, Color color)
                make_vector2(rect.x + rect.width/2, rect.y + rect.height), thick, color);
 }
 
-// TODO: add font gap
-void draw_cartesian_plane(Rectangle rect, Vector2 step_size, int step_count, Font font, float font_gap, Color cross_color, Color step_color)
+void geolib_draw_plane(Geolib *gl, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color)
 {
-    draw_cross(rect, 2, cross_color);
+    draw_cross(gl->plane_rect, 2, cross_color);
 
-    Vector2 line_start = make_vector2(rect.x + rect.width/2, rect.y + rect.height/2);
-    for (int i = 0;  i < (int) (ARRAY_LEN(directions)); ++i) {
-        for (int j = 1; j < step_count+1; ++j) {
+    Vector2 line_start = make_vector2(gl->plane_rect.x + gl->plane_rect.width/2, gl->plane_rect.y + gl->plane_rect.height/2);
+    for (size_t i = 0;  i < ARRAY_LEN(directions); ++i) {
+        for (size_t j = 1; j < gl->unit_count+1; ++j) {
             int xdir = directions[i][0];
             int ydir = directions[i][1];
 
             Vector2 curr_pos = make_vector2(
-                line_start.x + (j*(rect.width/2 / step_count))*xdir,
-                line_start.y + (j*(rect.height/2 / step_count))*ydir);
+                line_start.x + (j*(gl->plane_rect.width/2 / gl->unit_count))*xdir,
+                line_start.y + (j*(gl->plane_rect.height/2 / gl->unit_count))*ydir);
 
-            Rectangle rect = (Rectangle) {
+            Rectangle step_rect = (Rectangle) {
                 .x = curr_pos.x,
                 .y = curr_pos.y,
-                .width = fabsf(step_size.x * xdir + step_size.y * ydir),
-                .height = fabsf(step_size.y * xdir + step_size.x * ydir),
+                .width = fabsf(unit_marker_size.x * xdir + unit_marker_size.y * ydir),
+                .height = fabsf(unit_marker_size.y * xdir + unit_marker_size.x * ydir),
             };
 
-            rect.x -= rect.width/2;
-            rect.y -= rect.height/2;
+            step_rect.x -= step_rect.width/2;
+            step_rect.y -= step_rect.height/2;
 
-            DrawRectangleRec(rect, step_color);
+            DrawRectangleRec(step_rect, step_color);
 
             const char *coordinate_text = TextFormat("%d", j*(xdir + -ydir));
-            Vector2 text_size = MeasureTextEx(font, coordinate_text, FONT_SIZE, 1);
+            Vector2 text_size = MeasureTextEx(font, coordinate_text, font.baseSize, 1);
             DrawTextEx(font,
                        coordinate_text,
-                       make_vector2(rect.x + (text_size.x/2 * -abs(xdir) + (text_size.x + font_gap) * -abs(ydir)),
-                                    rect.y + (text_size.y/2 * -abs(ydir) + (text_size.y/2 + font_gap) * abs(xdir))), // TODO: document this
-                       FONT_SIZE, 1, WHITE);
+                       make_vector2(step_rect.x + (text_size.x/2 * -abs(xdir) + (text_size.x + font_gap) * -abs(ydir)),
+                                    step_rect.y + (text_size.y/2 * -abs(ydir) + (text_size.y/2 + font_gap) * abs(xdir))), // TODO: document this
+                       font.baseSize, 1, step_color);
         }
     }
 }
@@ -150,14 +275,19 @@ void draw_arrow(Vector2 start_point, Vector2 end_point, float thick, float tip_l
 
     Vector2 left = Vector2Add(tip_start, polar_to_coords(tip_width/2, get_vec_angle(diff) - 90));
     Vector2 right = Vector2Add(tip_start, polar_to_coords(tip_width/2, get_vec_angle(diff) + 90));
-    DrawTriangle(end_point, left, right, WHITE);
+    DrawTriangle(end_point, left, right, color);
 }
 
-void draw_vector(Vector2 v, Vector2 start, float scalar)
+void draw_vector(Vector2 v, Vector2 start, float scalar, Color color)
 {
     Vector2 cartesian_point = to_cartesian_system(v, start, scalar);
-    draw_arrow(start, cartesian_point, 3, 20, 10, WHITE);
-    DrawCircleV(cartesian_point, 3, RED);
+    draw_arrow(start, cartesian_point, 3, 20, 10, color);
+    // DrawCircleV(cartesian_point, 3, WHITE); // NOTE: Not sure if the user ever wants this
+}
+
+void draw_vector_info(GEOL_Vector2 v, Vector2 pos, Font font)
+{
+    DrawTextEx(font, TextFormat("%c = (%f, %f)", v.name, v.vector.x, v.vector.y), pos, font.baseSize, 1, v.color);
 }
 
 #endif // GEOLIB_IMPLEMENTATION
