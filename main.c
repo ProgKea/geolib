@@ -1,8 +1,6 @@
 #define GEOLIB_IMPLEMENTATION
 #include "geolib.h"
 
-#define FONT_SIZE 30
-
 int main(void)
 {
     SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE);
@@ -45,6 +43,7 @@ int main(void)
             ClearBackground(GetColor(0x181818FF));
             geolib_draw_plane(&gl, make_vector2(5, 20), font, 10, WHITE, WHITE);
             geolib_plot_vecs(&gl);
+            geolib_draw_vecs_info(&gl, make_vector2(0, 0), font);
         }
         EndDrawing();
     }
