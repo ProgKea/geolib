@@ -7,13 +7,13 @@
 #include <raymath.h>
 
 #define ARRAY_LEN(arr) sizeof(arr)/sizeof(arr[0])
-#define FONT_SIZE 50
+#define FONT_SIZE 30
 
 #define UNIMPLEMENTED(...)                                              \
     do {                                                                \
         printf("%s:%d: UNIMPLEMENTED: %s\n", __FILE__, __LINE__, __VA_ARGS__); \
         exit(1);                                                        \
-    } while (0);
+    } while (0)
 
 #define UNUSED(v) (void) (v)
 
@@ -38,7 +38,7 @@ const float directions[4][2] = {
 };
 
 // TODO: add font gap
-void draw_cartesian_system(Rectangle rect, Vector2 step_size, int step_count, Font font, Color cross_color, Color step_color)
+void draw_cartesian_plane(Rectangle rect, Vector2 step_size, int step_count, Font font, float font_gap, Color cross_color, Color step_color)
 {
     draw_cross(rect, 2, cross_color);
 
@@ -68,8 +68,8 @@ void draw_cartesian_system(Rectangle rect, Vector2 step_size, int step_count, Fo
             Vector2 text_size = MeasureTextEx(font, coordinate_text, FONT_SIZE, 1);
             DrawTextEx(font,
                        coordinate_text,
-                       make_vector2(rect.x + (text_size.x/2 * -abs(xdir) + text_size.x * -abs(ydir)),
-                                    rect.y + (text_size.y/2 * -abs(ydir) + text_size.y/2 * abs(xdir))), // TODO: document this
+                       make_vector2(rect.x + (text_size.x/2 * -abs(xdir) + (text_size.x + font_gap) * -abs(ydir)),
+                                    rect.y + (text_size.y/2 * -abs(ydir) + (text_size.y/2 + font_gap) * abs(xdir))), // TODO: document this
                        FONT_SIZE, 1, WHITE);
         }
     }
@@ -168,7 +168,7 @@ int main(void)
         BeginDrawing();
         {
             ClearBackground(GetColor(0x181818FF));
-            draw_cartesian_system(grid_rect, make_vector2(5, 20), step_count, font, WHITE, WHITE);
+            draw_cartesian_plane(grid_rect, make_vector2(5, 20), step_count, font, 10.0, WHITE, WHITE);
             draw_vector(make_vector2(2, 1), grid_origin, step_len);
         }
         EndDrawing();
