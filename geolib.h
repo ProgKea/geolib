@@ -91,10 +91,15 @@ typedef struct {
     float step_size;
 } Geolib;
 
-#define geolib_add_vector(gl, v) geolib_add_vectors(gl, v, 0)
-
 Geolib geolib_alloc(Rectangle plane_rect, size_t unit_count);
-size_t geolib_add_vectors(Geolib *gl, Vector2 v, size_t n, ...);
+
+// `geolib_add_vectors` returns the index of the newly added vector
+size_t geolib_add_vector(Geolib *gl, Vector2 v);
+size_t geolib_add_vector_dps(Geolib *gl, Vector2 v, size_t n, ...);
+
+void geolib_add_drawing_point(Geolib *gl, size_t idx, Vector2 dp);
+void geolib_add_drawing_points(Geolib *gl, size_t idx, size_t n, ...);
+
 void geolib_draw_plane(Geolib *gl, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color);
 void geolib_clean(Geolib *gl);
 void geolib_draw_vector(Vector2 v, Vector2 start, Vector2 origin, float scalar, Color color);
@@ -102,6 +107,7 @@ void geolib_plot_vec(Geolib *gl, Geolib_Vector2 v);
 void geolib_plot_vecs(Geolib *gl);
 void geolib_draw_vecs_info(Geolib *gl, Vector2 pos, Font font);
 void geolib_update_plane_rect(Geolib *gl, Rectangle new_plane_rect);
+Geolib_Vector2 *geolib_get_vector(Geolib *gl, size_t idx);
 
 Vector2 make_vector2(float x, float y);
 
@@ -154,7 +160,12 @@ void geolib_clean(Geolib *gl)
     da_reset(&gl->vectors);
 }
 
-size_t geolib_add_vectors(Geolib *gl, Vector2 v, size_t n, ...)
+size_t geolib_add_vector(Geolib *gl, Vector2 v)
+{
+    return geolib_add_vector_dps(gl, v, 0);
+}
+
+size_t geolib_add_vector_dps(Geolib *gl, Vector2 v, size_t n, ...)
 {
     size_t pool_index = fmodf(gl->vectors.count, ARRAY_LEN(color_pool));
     Geolib_Vector2 geolib_vector = (Geolib_Vector2) {
@@ -177,7 +188,25 @@ size_t geolib_add_vectors(Geolib *gl, Vector2 v, size_t n, ...)
     }
 
     da_append(&gl->vectors, geolib_vector);
-    return gl->vectors.count;
+    return gl->vectors.count-1;
+}
+
+void geolib_add_drawing_point(Geolib *gl, size_t idx, Vector2 dp) // TODO: implement another function like this that accepts indexes instead of Vector2
+{
+    geolib_add_drawing_points(gl, idx, 1, dp);
+}
+
+void geolib_add_drawing_points(Geolib *gl, size_t idx, size_t n, ...)
+{
+    Geolib_Vector2 *glv = geolib_get_vector(gl, idx);
+
+    va_list args;
+    va_start(args, n);
+    for (size_t i = 0; i < n; ++i) {
+        Vector2 curr_vec = va_arg(args, Vector2);
+        da_append(&glv->drawing_points, curr_vec);
+    }
+    va_end(args);
 }
 
 void geolib_plot_vec(Geolib *gl, Geolib_Vector2 v)
@@ -210,6 +239,12 @@ void geolib_update_plane_rect(Geolib *gl, Rectangle new_plane_rect)
 {
     gl->plane_rect = new_plane_rect;
     gl->step_size = gl->plane_rect.width/2 / gl->unit_count;
+}
+
+Geolib_Vector2 *geolib_get_vector(Geolib *gl, size_t idx)
+{
+    assert(gl->vectors.count > idx);
+    return &gl->vectors.items[idx];
 }
 
 Vector2 make_vector2(float x, float y)
@@ -332,5 +367,15 @@ float get_vec_angle(Vector2 v)
 #endif // GEOLIB_IMPLEMENTATION
 
 // TODO: make this library library agnostic: This library should work with other libraries such as sdl2
-// TODO: find a better way to let the user modify the vectors
 // TODO: add functions to help with drawing the same vector at multiple positions (the user should be able to define multiple starting positions for each vector)
+
+// TODO: Make this kind of api easier maybe by providing a struct that stores the vector and the index
+/*
+            Vector2 a_vec = make_vector2(2, 3);
+            Vector2 b_vec = make_vector2(5, -2.25);
+            size_t a_idx = geolib_add_vector(&gl, a_vec);
+            size_t b_idx = geolib_add_vector(&gl, b_vec);
+            geolib_add_drawing_point(&gl, a_idx, b_vec);
+            geolib_add_drawing_point(&gl, b_idx, a_vec);
+            geolib_add_vector(&gl, Vector2Add(a_vec, b_vec));
+*/
