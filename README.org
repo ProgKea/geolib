@@ -8,5 +8,5 @@ You can learn how to use the library by reading the code in the [[file:./main.c]
 
 [[file:demos/adding.png]]
 [[file:demos/subtracting.png]]
-[[file:demos/rotating.mp4]]
+[[file:demos/rotating.gif]]
 [[file:demos/scaling.mp4]]
