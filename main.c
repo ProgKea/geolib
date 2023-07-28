@@ -31,7 +31,9 @@ int main(void)
                 .height = grid_size,
         };
 
-        geolib_update_plane_rect(&gl, plane_rect);
+        if (IsWindowResized()) {
+            geolib_update_plane_rect(&gl, plane_rect);
+        }
 
         BeginDrawing();
         {
