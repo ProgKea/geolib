@@ -66,8 +66,14 @@
     } while (0)
 
 typedef struct {
+    Vector2 *items;
+    size_t count;
+    size_t capacity;
+} Vector2s;
+
+typedef struct {
     Vector2 vector;
-    Vector2 start;
+    Vector2s drawing_points;
     Color color;
     char name;
 } Geolib_Vector2;
@@ -85,8 +91,10 @@ typedef struct {
     float step_size;
 } Geolib;
 
+#define geolib_add_vector(gl, v) geolib_add_vectors(gl, v, 0)
+
 Geolib geolib_alloc(Rectangle plane_rect, size_t unit_count);
-void geolib_add_vector(Geolib *gl, Vector2 v, Vector2 start);
+size_t geolib_add_vectors(Geolib *gl, Vector2 v, size_t n, ...);
 void geolib_draw_plane(Geolib *gl, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color);
 void geolib_clean(Geolib *gl);
 void geolib_draw_vector(Vector2 v, Vector2 start, Vector2 origin, float scalar, Color color);
@@ -146,16 +154,30 @@ void geolib_clean(Geolib *gl)
     da_reset(&gl->vectors);
 }
 
-void geolib_add_vector(Geolib *gl, Vector2 v, Vector2 start)
+size_t geolib_add_vectors(Geolib *gl, Vector2 v, size_t n, ...)
 {
     size_t pool_index = fmodf(gl->vectors.count, ARRAY_LEN(color_pool));
+    Geolib_Vector2 geolib_vector = (Geolib_Vector2) {
+        .vector = v,
+        .drawing_points = {0},
+        .color = color_pool[pool_index],
+        .name = vec_name_pool[pool_index]
+    };
 
-    da_append(&gl->vectors, ((Geolib_Vector2) {
-                .vector = v,
-                .start = start,
-                .color = color_pool[pool_index],
-                .name = vec_name_pool[pool_index]
-            }));
+    if (n == 0) {
+        da_append(&geolib_vector.drawing_points, make_vector2(0, 0));
+    } else {
+        va_list args;
+        va_start(args, n);
+        for (size_t i = 0; i < n; ++i) {
+            Vector2 curr_vec = va_arg(args, Vector2);
+            da_append(&geolib_vector.drawing_points, curr_vec);
+        }
+        va_end(args);
+    }
+
+    da_append(&gl->vectors, geolib_vector);
+    return gl->vectors.count;
 }
 
 void geolib_plot_vec(Geolib *gl, Geolib_Vector2 v)
@@ -163,7 +185,9 @@ void geolib_plot_vec(Geolib *gl, Geolib_Vector2 v)
     Vector2 plane_center = make_vector2(gl->plane_rect.x + gl->plane_rect.width/2,
                                         gl->plane_rect.y + gl->plane_rect.height/2);
 
-    geolib_draw_vector(v.vector, v.start, plane_center, gl->step_size, v.color);
+    for (size_t i = 0; i < v.drawing_points.count; ++i) {
+        geolib_draw_vector(v.vector, v.drawing_points.items[i], plane_center, gl->step_size, v.color);
+    }
 }
 
 void geolib_plot_vecs(Geolib *gl)
@@ -184,11 +208,6 @@ void geolib_draw_vecs_info(Geolib *gl, Vector2 pos, Font font)
 
 void geolib_update_plane_rect(Geolib *gl, Rectangle new_plane_rect)
 {
-    if (gl->plane_rect.x == new_plane_rect.x &&
-        gl->plane_rect.y == new_plane_rect.y &&
-        gl->plane_rect.width == new_plane_rect.width &&
-        gl->plane_rect.height == new_plane_rect.height) return;
-
     gl->plane_rect = new_plane_rect;
     gl->step_size = gl->plane_rect.width/2 / gl->unit_count;
 }
@@ -248,6 +267,12 @@ void geolib_draw_plane(Geolib *gl, Vector2 unit_marker_size, Font font, float fo
                        font.baseSize, 1, step_color);
         }
     }
+}
+
+void geolib_plot(Geolib *gl, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color)
+{
+    geolib_draw_plane(gl, unit_marker_size, font, font_gap, cross_color, step_color);
+    geolib_plot_vecs(gl);
 }
 
 void draw_arrow(Vector2 start_point, Vector2 end_point, float thick, float tip_len, float tip_width, Color color)

@@ -37,17 +37,9 @@ int main(void)
         {
             ClearBackground(GetColor(0x181818FF));
 
-            Vector2 a = make_vector2(2, 3);
-            Vector2 b = make_vector2(-5, 1);
-            Vector2 c = Vector2Add(a, b);
-            geolib_add_vector(&gl, a, make_vector2(0, 0));
-            geolib_add_vector(&gl, b, make_vector2(0, 0));
-            geolib_add_vector(&gl, c, make_vector2(0, 0));
-            geolib_add_vector(&gl, b, a);
-            geolib_add_vector(&gl, a, b);
+            geolib_add_vector(&gl, make_vector2(2, 3));
 
-            geolib_draw_plane(&gl, make_vector2(2, 18), font, 10, WHITE, WHITE);
-            geolib_plot_vecs(&gl);
+            geolib_plot(&gl, make_vector2(2, 18), font, 10, WHITE, WHITE);
             geolib_draw_vecs_info(&gl, make_vector2(0, 0), font);
 
             geolib_clean(&gl);
@@ -55,7 +47,6 @@ int main(void)
         EndDrawing();
     }
 
-    // geolib_dealloc(&gl);
     UnloadFont(font);
     return 0;
 }
