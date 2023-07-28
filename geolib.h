@@ -88,7 +88,8 @@ typedef struct {
 Geolib geolib_alloc(Rectangle plane_rect, size_t unit_count);
 void geolib_add_vector(Geolib *gl, Vector2 v, Vector2 start);
 void geolib_draw_plane(Geolib *gl, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color);
-void geolib_dealloc(Geolib *gl);
+void geolib_clean(Geolib *gl);
+void geolib_draw_vector(Vector2 v, Vector2 start, Vector2 origin, float scalar, Color color);
 void geolib_plot_vec(Geolib *gl, Geolib_Vector2 v);
 void geolib_plot_vecs(Geolib *gl);
 void geolib_draw_vecs_info(Geolib *gl, Vector2 pos, Font font);
@@ -98,7 +99,6 @@ Vector2 make_vector2(float x, float y);
 
 void draw_cross(Rectangle rect, float thick, Color color);
 void draw_arrow(Vector2 start_point, Vector2 end_point, float thick, float tip_len, float tip_width, Color color);
-void geolib_draw_vector(Vector2 v, Vector2 start, Vector2 origin, float scalar, Color color);
 void draw_vector_info(Geolib_Vector2 v, Vector2 pos, Font font);
 
 Vector2 to_cartesian_system(Vector2 v, Vector2 start, float scalar);
@@ -111,13 +111,6 @@ float get_vec_angle(Vector2 v);
 #endif  // GEOLIB_H_
 
 #ifdef GEOLIB_IMPLEMENTATION
-
-const int directions[4][2] = {
-    {-1, 0},
-    {1, 0},
-    {0, -1},
-    {0, 1},
-};
 
 const int vec_name_pool[] = {
     'A',
@@ -148,7 +141,7 @@ Geolib geolib_alloc(Rectangle plane_rect, size_t unit_count)
     return gl;
 }
 
-void geolib_dealloc(Geolib *gl)
+void geolib_clean(Geolib *gl)
 {
     da_reset(&gl->vectors);
 }
@@ -216,6 +209,13 @@ void draw_cross(Rectangle rect, float thick, Color color)
 void geolib_draw_plane(Geolib *gl, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color)
 {
     draw_cross(gl->plane_rect, 2, cross_color);
+
+    int directions[4][2] = {
+        {-1, 0},
+        {1, 0},
+        {0, -1},
+        {0, 1},
+    };
 
     Vector2 line_start = make_vector2(gl->plane_rect.x + gl->plane_rect.width/2, gl->plane_rect.y + gl->plane_rect.height/2);
     for (size_t i = 0;  i < ARRAY_LEN(directions); ++i) {
