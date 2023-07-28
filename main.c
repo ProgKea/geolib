@@ -17,12 +17,16 @@ int main(void)
             .y = h/2 - grid_size/2,
             .width = grid_size,
             .height = grid_size,
-        }, 5);
+        }, 10);
 
-    geolib_add_vector(&gl, make_vector2(2, 1));
-    geolib_add_vector(&gl, make_vector2(0.3, -1.5));
-    geolib_add_vector(&gl, make_vector2(-4, -3));
-    geolib_add_vector(&gl, make_vector2(-3, -3));
+    Vector2 a = make_vector2(2, 3);
+    Vector2 b = make_vector2(-5, 1);
+    Vector2 c = Vector2Add(a, b);
+    geolib_add_vector(&gl, a, make_vector2(0, 0));
+    geolib_add_vector(&gl, b, make_vector2(0, 0));
+    geolib_add_vector(&gl, c, make_vector2(0, 0));
+    geolib_add_vector(&gl, b, a);
+    geolib_add_vector(&gl, a, b);
 
     while (!WindowShouldClose()) {
         w = GetRenderWidth();

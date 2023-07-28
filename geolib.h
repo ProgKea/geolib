@@ -67,6 +67,7 @@
 
 typedef struct {
     Vector2 vector;
+    Vector2 start;
     Color color;
     char name;
 } Geolib_Vector2;
@@ -85,10 +86,9 @@ typedef struct {
 } Geolib;
 
 Geolib geolib_alloc(Rectangle plane_rect, size_t unit_count);
-void geolib_add_vector(Geolib *gl, Vector2 v);
+void geolib_add_vector(Geolib *gl, Vector2 v, Vector2 start);
 void geolib_draw_plane(Geolib *gl, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color);
 void geolib_dealloc(Geolib *gl);
-void geolib_add_vector(Geolib *gl, Vector2 v);
 void geolib_plot_vec(Geolib *gl, Geolib_Vector2 v);
 void geolib_plot_vecs(Geolib *gl);
 void geolib_draw_vecs_info(Geolib *gl, Vector2 pos, Font font);
@@ -98,7 +98,7 @@ Vector2 make_vector2(float x, float y);
 
 void draw_cross(Rectangle rect, float thick, Color color);
 void draw_arrow(Vector2 start_point, Vector2 end_point, float thick, float tip_len, float tip_width, Color color);
-void draw_vector(Vector2 v, Vector2 start, float scalar, Color color);
+void geolib_draw_vector(Vector2 v, Vector2 start, Vector2 origin, float scalar, Color color);
 void draw_vector_info(Geolib_Vector2 v, Vector2 pos, Font font);
 
 Vector2 to_cartesian_system(Vector2 v, Vector2 start, float scalar);
@@ -153,12 +153,13 @@ void geolib_dealloc(Geolib *gl)
     da_reset(&gl->vectors);
 }
 
-void geolib_add_vector(Geolib *gl, Vector2 v)
+void geolib_add_vector(Geolib *gl, Vector2 v, Vector2 start)
 {
     size_t pool_index = fmodf(gl->vectors.count, ARRAY_LEN(color_pool));
 
     da_append(&gl->vectors, ((Geolib_Vector2) {
                 .vector = v,
+                .start = start,
                 .color = color_pool[pool_index],
                 .name = vec_name_pool[pool_index]
             }));
@@ -166,9 +167,10 @@ void geolib_add_vector(Geolib *gl, Vector2 v)
 
 void geolib_plot_vec(Geolib *gl, Geolib_Vector2 v)
 {
-    draw_vector(v.vector,
-                make_vector2(gl->plane_rect.x + gl->plane_rect.width/2, gl->plane_rect.y + gl->plane_rect.height/2),
-                gl->step_size, v.color);
+    Vector2 plane_center = make_vector2(gl->plane_rect.x + gl->plane_rect.width/2,
+                                        gl->plane_rect.y + gl->plane_rect.height/2);
+
+    geolib_draw_vector(v.vector, v.start, plane_center, gl->step_size, v.color);
 }
 
 void geolib_plot_vecs(Geolib *gl)
@@ -261,10 +263,11 @@ void draw_arrow(Vector2 start_point, Vector2 end_point, float thick, float tip_l
     DrawTriangle(end_point, left, right, color);
 }
 
-void draw_vector(Vector2 v, Vector2 start, float scalar, Color color)
+void geolib_draw_vector(Vector2 v, Vector2 start, Vector2 origin, float scalar, Color color)
 {
-    Vector2 cartesian_point = to_cartesian_system(v, start, scalar);
-    draw_arrow(start, cartesian_point, 3, 20, 10, color);
+    Vector2 cartesian_start = to_cartesian_system(start, origin, scalar);
+    Vector2 cartesian_v = to_cartesian_system(v, cartesian_start, scalar);
+    draw_arrow(cartesian_start, cartesian_v, 3, 20, 10, color);
 }
 
 void draw_vector_info(Geolib_Vector2 v, Vector2 pos, Font font)
@@ -305,3 +308,4 @@ float get_vec_angle(Vector2 v)
 
 // TODO: make this library library agnostic: This library should work with other libraries such as sdl2
 // TODO: find a better way to let the user modify the vectors
+// TODO: add functions to help with drawing the same vector at multiple positions (the user should be able to define multiple starting positions for each vector)
