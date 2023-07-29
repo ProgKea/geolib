@@ -52,7 +52,7 @@ int main(void)
             Vector2 b_vec = make_vector2(2, 4.5);
             geolib_add_vector(&gl, a_vec);
             geolib_add_vector(&gl, b_vec);
-            geolib_add_vector_dps(&gl, Vector2Subtract(a_vec, b_vec), 2, make_vector2(0, 0), b_vec);
+            geolib_add_vector_dps(&gl, Vector2Subtract(a_vec, b_vec), make_dp(0, 0), vec2dp(b_vec));
 #elif defined(GEOLIB_ROTATING)
             size_t a_idx = geolib_add_vector(&gl, make_vector2(0, 5));
             Geolib_Vector2 *a_glv = geolib_get_vector(&gl, a_idx);

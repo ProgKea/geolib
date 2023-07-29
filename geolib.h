@@ -69,6 +69,11 @@ typedef struct {
 } Geolib_Vector2s;
 
 typedef struct {
+    Vector2 vec;
+    bool created;
+} Dp;
+
+typedef struct {
     Geolib_Vector2s vectors;
     Rectangle plane_rect;
     size_t unit_count;
@@ -79,10 +84,10 @@ Geolib geolib_alloc(Rectangle plane_rect, size_t unit_count);
 
 // `geolib_add_vectors` returns the index of the newly added vector
 size_t geolib_add_vector(Geolib *gl, Vector2 v);
-size_t geolib_add_vector_dps(Geolib *gl, Vector2 v, size_t n, ...);
+size_t geolib_add_vector_dps(Geolib *gl, Vector2 v, ...);
 
 void geolib_add_drawing_point(Geolib *gl, size_t idx, Vector2 dp);
-void geolib_add_drawing_points(Geolib *gl, size_t idx, size_t n, ...);
+void geolib_add_drawing_points(Geolib *gl, size_t idx, ...);
 
 void geolib_draw_plane(Geolib *gl, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color);
 void geolib_clean(Geolib *gl);
@@ -94,6 +99,8 @@ void geolib_update_plane_rect(Geolib *gl, Rectangle new_plane_rect);
 Geolib_Vector2 *geolib_get_vector(Geolib *gl, size_t idx);
 
 Vector2 make_vector2(float x, float y);
+Dp make_dp(float x, float y);
+Dp vec2dp(Vector2 v);
 
 void draw_cross(Rectangle rect, float thick, Color color);
 void draw_arrow(Vector2 start_point, Vector2 end_point, float thick, float tip_len, float tip_width, Color color);
@@ -151,11 +158,11 @@ void geolib_clean(Geolib *gl)
 // TODO: return the pointer to the Geolib_Vector instead of the index
 size_t geolib_add_vector(Geolib *gl, Vector2 v)
 {
-    return geolib_add_vector_dps(gl, v, 0);
+    return geolib_add_vector_dps(gl, v, make_dp(0, 0));
 }
 
 // TODO: expect NULL as the last argument instead of accepting the number of arguments
-size_t geolib_add_vector_dps(Geolib *gl, Vector2 v, size_t n, ...)
+size_t geolib_add_vector_dps(Geolib *gl, Vector2 v, ...)
 {
     size_t pool_index = fmodf(gl->vectors.count, ARRAY_LEN(color_pool));
     Geolib_Vector2 geolib_vector = (Geolib_Vector2) {
@@ -165,17 +172,14 @@ size_t geolib_add_vector_dps(Geolib *gl, Vector2 v, size_t n, ...)
         .name = vec_name_pool[pool_index]
     };
 
-    if (n == 0) {
-        da_append(&geolib_vector.drawing_points, make_vector2(0, 0));
-    } else {
-        va_list args;
-        va_start(args, n);
-        for (size_t i = 0; i < n; ++i) {
-            Vector2 curr_vec = va_arg(args, Vector2);
-            da_append(&geolib_vector.drawing_points, curr_vec);
-        }
-        va_end(args);
+    va_list args;
+    va_start(args, v);
+    Dp curr_dp = va_arg(args, Dp);
+    while (curr_dp.created == true) {
+        da_append(&geolib_vector.drawing_points, curr_dp.vec);
+        curr_dp = va_arg(args, Dp);
     }
+    va_end(args);
 
     da_append(&gl->vectors, geolib_vector);
     return gl->vectors.count-1;
@@ -186,15 +190,16 @@ void geolib_add_drawing_point(Geolib *gl, size_t idx, Vector2 dp) // TODO: imple
     geolib_add_drawing_points(gl, idx, 1, dp);
 }
 
-void geolib_add_drawing_points(Geolib *gl, size_t idx, size_t n, ...)
+void geolib_add_drawing_points(Geolib *gl, size_t idx, ...)
 {
     Geolib_Vector2 *glv = geolib_get_vector(gl, idx);
 
     va_list args;
-    va_start(args, n);
-    for (size_t i = 0; i < n; ++i) {
-        Vector2 curr_vec = va_arg(args, Vector2);
-        da_append(&glv->drawing_points, curr_vec);
+    va_start(args, idx);
+    Dp curr_dp = va_arg(args, Dp);
+    while (curr_dp.created) {
+        da_append(&glv->drawing_points, curr_dp.vec);
+        curr_dp = va_arg(args, Dp);
     }
     va_end(args);
 }
@@ -240,6 +245,22 @@ Geolib_Vector2 *geolib_get_vector(Geolib *gl, size_t idx)
 Vector2 make_vector2(float x, float y)
 {
     return (Vector2) {x, y};
+}
+
+Dp make_dp(float x, float y)
+{
+    return (Dp) {
+        .vec = make_vector2(x, y),
+        .created = true
+    };
+}
+
+Dp vec2dp(Vector2 v)
+{
+    return (Dp) {
+        .vec = v,
+        .created = true,
+    };
 }
 
 void draw_cross(Rectangle rect, float thick, Color color)
@@ -358,6 +379,7 @@ float get_vec_angle(Vector2 v)
 
 // TODO: make this library library agnostic: This library should work with other libraries such as sdl2
 // TODO: add functions to help with drawing the same vector at multiple positions (the user should be able to define multiple starting positions for each vector)
+// TODO: rename functions that are a too long
 
 // TODO: Make this kind of api easier maybe by providing a struct that stores the vector and the index
 /*
