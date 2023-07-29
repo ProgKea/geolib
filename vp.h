@@ -80,6 +80,19 @@ typedef struct {
     float step_size;
 } Vp;
 
+#ifndef DEFAULT_MARKER_SIZE
+#define DEFAULT_MARKER_SIZE make_vec2(2, 18)
+#endif
+#ifndef DEFAULT_FONT_GAP
+#define DEFAULT_FONT_GAP 10
+#endif
+#ifndef DEFAULT_CROSS_COLOR
+#define DEFAULT_CROSS_COLOR WHITE
+#endif
+#ifndef DEFAULT_STEP_COLOR
+#define DEFAULT_STEP_COLOR WHITE
+#endif
+
 Vp vp_alloc(Rectangle plane_rect, size_t unit_count);
 
 // `geolib_add_vecs` returns the index of the newly added vec
@@ -92,6 +105,7 @@ void vp_add_dps(Vp *vp, size_t idx, ...);
 void vp_draw_plane(Vp *vp, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color);
 void vp_clean(Vp *vp);
 void vp_draw_vec(Vector2 v, Vector2 start, Vector2 origin, float scalar, Color color);
+void vp_plot_unwrapped(Vp *vp, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color);
 void vp_plot_vec(Vp *vp, Vp_Vector2 v);
 void vp_plot_vecs(Vp *vp);
 void vp_draw_info(Vp *vp, Vector2 pos, Font font);
@@ -208,7 +222,7 @@ void vp_add_dps(Vp *vp, size_t idx, ...)
 void vp_plot_vec(Vp *vp, Vp_Vector2 v)
 {
     Vector2 plane_center = make_vec2(vp->plane_rect.x + vp->plane_rect.width/2,
-                                        vp->plane_rect.y + vp->plane_rect.height/2);
+                                     vp->plane_rect.y + vp->plane_rect.height/2);
 
     for (size_t i = 0; i < v.dps.count; ++i) {
         vp_draw_vec(v.vec, v.dps.items[i], plane_center, vp->step_size, v.color);
@@ -310,17 +324,29 @@ void vp_draw_plane(Vp *vp, Vector2 unit_marker_size, Font font, float font_gap, 
             DrawTextEx(font,
                        coordinate_text,
                        make_vec2(step_rect.x + (text_size.x/2 * -abs(xdir) + (text_size.x + font_gap) * -abs(ydir)),
-                                    step_rect.y + (text_size.y/2 * -abs(ydir) + (text_size.y/2 + font_gap) * abs(xdir))), // TODO: document this
+                                 step_rect.y + (text_size.y/2 * -abs(ydir) + (text_size.y/2 + font_gap) * abs(xdir))), // TODO: document this
                        font.baseSize, 1, step_color);
         }
     }
 }
 
-void vp_plot(Vp *vp, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color)
+void vp_plot_unwrapped(Vp *vp, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color)
 {
     vp_draw_plane(vp, unit_marker_size, font, font_gap, cross_color, step_color);
     vp_plot_vecs(vp);
 }
+#if defined(USE_DEFAULTS)
+void vp_plot(Vp *vp, Font font)
+{
+
+    vp_plot_unwrapped(vp, DEFAULT_MARKER_SIZE, font, DEFAULT_FONT_GAP, DEFAULT_CROSS_COLOR, DEFAULT_STEP_COLOR);
+}
+#else
+void vp_plot(Vp *vp, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color)
+{
+    vp_plot_unwrapped(vp, unit_marker_size, font, font_gap, cross_color, step_color);
+}
+#endif
 
 void draw_arrow(Vector2 start_point, Vector2 end_point, float thick, float tip_len, float tip_width, Color color)
 {
@@ -384,11 +410,14 @@ float get_vec_angle(Vector2 v)
 
 // TODO: Make this kind of api easier maybe by providing a struct that stores the vector and the index
 /*
-            Vector2 a_vec = make_vec2(2, 3);
-            Vector2 b_vec = make_vec2(5, -2.25);
-            size_t a_idx = vp_add_vec(&vp, a_vec);
-            size_t b_idx = vp_add_vec(&vp, b_vec);
-            vp_add_dp(&vp, a_idx, b_vec);
-            vp_add_dp(&vp, b_idx, a_vec);
-            vp_add_vec(&vp, Vector2Add(a_vec, b_vec));
+  Vector2 a_vec = make_vec2(2, 3);
+  Vector2 b_vec = make_vec2(5, -2.25);
+  size_t a_idx = vp_add_vec(&vp, a_vec);
+  size_t b_idx = vp_add_vec(&vp, b_vec);
+  vp_add_dp(&vp, a_idx, b_vec);
+  vp_add_dp(&vp, b_idx, a_vec);
+  vp_add_vec(&vp, Vector2Add(a_vec, b_vec));
 */
+
+
+// TODO: Seperate drawing functions from the rest

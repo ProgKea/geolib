@@ -1,4 +1,5 @@
 #define VP_IMPLEMENTATION
+#define USE_DEFAULTS
 #include "vp.h"
 
 int main(void)
@@ -63,9 +64,8 @@ int main(void)
             a_vpvec->vec = Vector2Scale(a_vpvec->vec, sin(GetTime()));
 #endif
 
-            vp_plot(&vp, make_vec2(2, 18), font, 10, WHITE, WHITE);
+            vp_plot(&vp, font);
             vp_draw_info(&vp, make_vec2(0, 0), font);
-
             vp_clean(&vp);
         }
         EndDrawing();
@@ -75,4 +75,4 @@ int main(void)
     return 0;
 }
 
-// TODO: force the user to call `geolib_clean`
+// TODO: force the user to call `vp_clean`
