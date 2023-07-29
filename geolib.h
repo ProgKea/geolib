@@ -9,22 +9,6 @@
 #include <raylib.h>
 #include <raymath.h>
 
-#ifndef ARRAY_LEN
-#define ARRAY_LEN(arr) sizeof(arr)/sizeof(arr[0])
-#endif
-
-#ifndef UNIMPLEMENTED
-#define UNIMPLEMENTED(...)                                              \
-    do {                                                                \
-        printf("%s:%d: UNIMPLEMENTED: %s\n", __FILE__, __LINE__, __VA_ARGS__); \
-        exit(1);                                                        \
-    } while (0)
-#endif
-
-#ifndef UNUSED
-#define UNUSED(v) (void) (v)
-#endif
-
 #define DA_INIT_CAP 256
 
 #define da_append(da, item)                                             \
@@ -144,6 +128,10 @@ const Color color_pool[] = {
     ORANGE,
 };
 
+#ifndef ARRAY_LEN
+#define ARRAY_LEN(arr) sizeof(arr)/sizeof(arr[0])
+#endif
+
 static_assert(ARRAY_LEN(vec_name_pool) == ARRAY_LEN(color_pool), "The pools are not equal in size, please make sure they are");
 
 Geolib geolib_alloc(Rectangle plane_rect, size_t unit_count)
@@ -160,11 +148,13 @@ void geolib_clean(Geolib *gl)
     da_reset(&gl->vectors);
 }
 
+// TODO: return the pointer to the Geolib_Vector instead of the index
 size_t geolib_add_vector(Geolib *gl, Vector2 v)
 {
     return geolib_add_vector_dps(gl, v, 0);
 }
 
+// TODO: expect NULL as the last argument instead of accepting the number of arguments
 size_t geolib_add_vector_dps(Geolib *gl, Vector2 v, size_t n, ...)
 {
     size_t pool_index = fmodf(gl->vectors.count, ARRAY_LEN(color_pool));
