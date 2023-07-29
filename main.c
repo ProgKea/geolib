@@ -40,31 +40,31 @@ int main(void)
             ClearBackground(GetColor(0x181818FF));
 
 #if defined(GEOLIB_ADDING)
-            Vector2 a_vec = make_vector2(2, 3);
-            Vector2 b_vec = make_vector2(5, -2.25);
-            size_t a_idx = vp_add_vector(&vp, a_vec);
-            size_t b_idx = vp_add_vector(&vp, b_vec);
+            Vector2 a_vec = make_vec2(2, 3);
+            Vector2 b_vec = make_vec2(5, -2.25);
+            size_t a_idx = vp_add_vec(&vp, a_vec);
+            size_t b_idx = vp_add_vec(&vp, b_vec);
             vp_add_dp(&vp, a_idx, b_vec);
             vp_add_dp(&vp, b_idx, a_vec);
-            vp_add_vector(&vp, Vector2Add(a_vec, b_vec));
+            vp_add_vec(&vp, Vector2Add(a_vec, b_vec));
 #elif defined(GEOLIB_SUBTRACTING)
-            Vector2 a_vec = make_vector2(5, -3);
-            Vector2 b_vec = make_vector2(2, 4.5);
-            vp_add_vector(&vp, a_vec);
-            vp_add_vector(&vp, b_vec);
-            vp_add_vector_dps(&vp, Vector2Subtract(a_vec, b_vec), make_dp(0, 0), vec2dp(b_vec));
+            Vector2 a_vec = make_vec2(5, -3);
+            Vector2 b_vec = make_vec2(2, 4.5);
+            vp_add_vec(&vp, a_vec);
+            vp_add_vec(&vp, b_vec);
+            vp_add_vec_dps(&vp, Vector2Subtract(a_vec, b_vec), make_dp(0, 0), vec2dp(b_vec));
 #elif defined(GEOLIB_ROTATING)
-            size_t a_idx = vp_add_vector(&vp, make_vector2(0, 5));
-            Vp_Vector2 *a_vpv = vp_get_vector(&vp, a_idx);
-            a_vpv->vector = Vector2Rotate(a_vpv->vector, degrees2radians(90)*sin(GetTime()));
+            size_t a_idx = vp_add_vec(&vp, make_vec2(0, 5));
+            Vp_Vector2 *a_vpv = vp_get_vec(&vp, a_idx);
+            a_vpv->vec = Vector2Rotate(a_vpv->vec, degrees2radians(90)*sin(GetTime()));
 #elif defined(GEOLIB_SCALING)
-            size_t a_idx = vp_add_vector(&vp, make_vector2(10, 10));
-            Vp_Vector2 *a_vpvec = vp_get_vector(&vp, a_idx);
-            a_vpvec->vector = Vector2Scale(a_vpvec->vector, sin(GetTime()));
+            size_t a_idx = vp_add_vec(&vp, make_vec2(10, 10));
+            Vp_Vector2 *a_vpvec = vp_get_vec(&vp, a_idx);
+            a_vpvec->vec = Vector2Scale(a_vpvec->vec, sin(GetTime()));
 #endif
 
-            vp_plot(&vp, make_vector2(2, 18), font, 10, WHITE, WHITE);
-            vp_draw_info(&vp, make_vector2(0, 0), font);
+            vp_plot(&vp, make_vec2(2, 18), font, 10, WHITE, WHITE);
+            vp_draw_info(&vp, make_vec2(0, 0), font);
 
             vp_clean(&vp);
         }

@@ -56,7 +56,7 @@ typedef struct {
 } Vector2s;
 
 typedef struct {
-    Vector2 vector;
+    Vector2 vec;
     Vector2s dps;
     Color color;
     char name;
@@ -74,7 +74,7 @@ typedef struct {
 } Dp;
 
 typedef struct {
-    Vp_Vector2s vectors;
+    Vp_Vector2s vecs;
     Rectangle plane_rect;
     size_t unit_count;
     float step_size;
@@ -82,29 +82,30 @@ typedef struct {
 
 Vp vp_alloc(Rectangle plane_rect, size_t unit_count);
 
-// `geolib_add_vectors` returns the index of the newly added vector
-size_t vp_add_vector(Vp *vp, Vector2 v);
-size_t vp_add_vector_dps(Vp *vp, Vector2 v, ...);
+// `geolib_add_vecs` returns the index of the newly added vec
+size_t vp_add_vec(Vp *vp, Vector2 v);
+size_t vp_add_vec_dps(Vp *vp, Vector2 v, ...);
 
 void vp_add_dp(Vp *vp, size_t idx, Vector2 dp);
 void vp_add_dps(Vp *vp, size_t idx, ...);
 
 void vp_draw_plane(Vp *vp, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color);
 void vp_clean(Vp *vp);
-void vp_draw_vector(Vector2 v, Vector2 start, Vector2 origin, float scalar, Color color);
+void vp_draw_vec(Vector2 v, Vector2 start, Vector2 origin, float scalar, Color color);
 void vp_plot_vec(Vp *vp, Vp_Vector2 v);
 void vp_plot_vecs(Vp *vp);
 void vp_draw_info(Vp *vp, Vector2 pos, Font font);
 void vp_update_plane_rect(Vp *vp, Rectangle new_plane_rect);
-Vp_Vector2 *vp_get_vector(Vp *vp, size_t idx);
 
-Vector2 make_vector2(float x, float y);
+Vp_Vector2 *vp_get_vec(Vp *vp, size_t idx);
+
+Vector2 make_vec2(float x, float y);
 Dp make_dp(float x, float y);
 Dp vec2dp(Vector2 v);
 
 void draw_cross(Rectangle rect, float thick, Color color);
 void draw_arrow(Vector2 start_point, Vector2 end_point, float thick, float tip_len, float tip_width, Color color);
-void draw_vector_info(Vp_Vector2 v, Vector2 pos, Font font);
+void draw_vec_info(Vp_Vector2 v, Vector2 pos, Font font);
 
 Vector2 to_cartesian_system(Vector2 v, Vector2 start, float scalar);
 float radians2degrees(float radians);
@@ -152,21 +153,21 @@ Vp vp_alloc(Rectangle plane_rect, size_t unit_count)
 
 void vp_clean(Vp *vp)
 {
-    da_reset(&vp->vectors);
+    da_reset(&vp->vecs);
 }
 
 // TODO: return the pointer to the Vp_Vector instead of the index
-size_t vp_add_vector(Vp *vp, Vector2 v)
+size_t vp_add_vec(Vp *vp, Vector2 v)
 {
-    return vp_add_vector_dps(vp, v, make_dp(0, 0));
+    return vp_add_vec_dps(vp, v, make_dp(0, 0));
 }
 
 // TODO: expect NULL as the last argument instead of accepting the number of arguments
-size_t vp_add_vector_dps(Vp *vp, Vector2 v, ...)
+size_t vp_add_vec_dps(Vp *vp, Vector2 v, ...)
 {
-    size_t pool_index = fmodf(vp->vectors.count, ARRAY_LEN(color_pool));
-    Vp_Vector2 vp_vector = (Vp_Vector2) {
-        .vector = v,
+    size_t pool_index = fmodf(vp->vecs.count, ARRAY_LEN(color_pool));
+    Vp_Vector2 vp_vec = (Vp_Vector2) {
+        .vec = v,
         .dps = {0},
         .color = color_pool[pool_index],
         .name = vec_name_pool[pool_index]
@@ -176,13 +177,13 @@ size_t vp_add_vector_dps(Vp *vp, Vector2 v, ...)
     va_start(args, v);
     Dp curr_dp = va_arg(args, Dp);
     while (curr_dp.created == true) {
-        da_append(&vp_vector.dps, curr_dp.vec);
+        da_append(&vp_vec.dps, curr_dp.vec);
         curr_dp = va_arg(args, Dp);
     }
     va_end(args);
 
-    da_append(&vp->vectors, vp_vector);
-    return vp->vectors.count-1;
+    da_append(&vp->vecs, vp_vec);
+    return vp->vecs.count-1;
 }
 
 void vp_add_dp(Vp *vp, size_t idx, Vector2 dp) // TODO: implement another function like this that accepts indexes instead of Vector2
@@ -192,7 +193,7 @@ void vp_add_dp(Vp *vp, size_t idx, Vector2 dp) // TODO: implement another functi
 
 void vp_add_dps(Vp *vp, size_t idx, ...)
 {
-    Vp_Vector2 *vpv = vp_get_vector(vp, idx);
+    Vp_Vector2 *vpv = vp_get_vec(vp, idx);
 
     va_list args;
     va_start(args, idx);
@@ -206,26 +207,26 @@ void vp_add_dps(Vp *vp, size_t idx, ...)
 
 void vp_plot_vec(Vp *vp, Vp_Vector2 v)
 {
-    Vector2 plane_center = make_vector2(vp->plane_rect.x + vp->plane_rect.width/2,
+    Vector2 plane_center = make_vec2(vp->plane_rect.x + vp->plane_rect.width/2,
                                         vp->plane_rect.y + vp->plane_rect.height/2);
 
     for (size_t i = 0; i < v.dps.count; ++i) {
-        vp_draw_vector(v.vector, v.dps.items[i], plane_center, vp->step_size, v.color);
+        vp_draw_vec(v.vec, v.dps.items[i], plane_center, vp->step_size, v.color);
     }
 }
 
 void vp_plot_vecs(Vp *vp)
 {
-    for (size_t i = 0; i < vp->vectors.count; ++i) {
-        vp_plot_vec(vp, vp->vectors.items[i]);
+    for (size_t i = 0; i < vp->vecs.count; ++i) {
+        vp_plot_vec(vp, vp->vecs.items[i]);
     }
 }
 
 // TODO: Make this function accept a rectangle in which it should fit
 void vp_draw_info(Vp *vp, Vector2 pos, Font font)
 {
-    for (size_t i = 0; i < vp->vectors.count; ++i) {
-        draw_vector_info(vp->vectors.items[i], pos, font);
+    for (size_t i = 0; i < vp->vecs.count; ++i) {
+        draw_vec_info(vp->vecs.items[i], pos, font);
         pos.y += font.baseSize;
     }
 }
@@ -236,13 +237,13 @@ void vp_update_plane_rect(Vp *vp, Rectangle new_plane_rect)
     vp->step_size = vp->plane_rect.width/2 / vp->unit_count;
 }
 
-Vp_Vector2 *vp_get_vector(Vp *vp, size_t idx)
+Vp_Vector2 *vp_get_vec(Vp *vp, size_t idx)
 {
-    assert(vp->vectors.count > idx);
-    return &vp->vectors.items[idx];
+    assert(vp->vecs.count > idx);
+    return &vp->vecs.items[idx];
 }
 
-Vector2 make_vector2(float x, float y)
+Vector2 make_vec2(float x, float y)
 {
     return (Vector2) {x, y};
 }
@@ -250,7 +251,7 @@ Vector2 make_vector2(float x, float y)
 Dp make_dp(float x, float y)
 {
     return (Dp) {
-        .vec = make_vector2(x, y),
+        .vec = make_vec2(x, y),
         .created = true
     };
 }
@@ -265,10 +266,10 @@ Dp vec2dp(Vector2 v)
 
 void draw_cross(Rectangle rect, float thick, Color color)
 {
-    DrawLineEx(make_vector2(rect.x, rect.y + rect.height/2),
-               make_vector2(rect.x + rect.width, rect.y + rect.height/2), thick, color);
-    DrawLineEx(make_vector2(rect.x + rect.width/2, rect.y),
-               make_vector2(rect.x + rect.width/2, rect.y + rect.height), thick, color);
+    DrawLineEx(make_vec2(rect.x, rect.y + rect.height/2),
+               make_vec2(rect.x + rect.width, rect.y + rect.height/2), thick, color);
+    DrawLineEx(make_vec2(rect.x + rect.width/2, rect.y),
+               make_vec2(rect.x + rect.width/2, rect.y + rect.height), thick, color);
 }
 
 void vp_draw_plane(Vp *vp, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color)
@@ -282,13 +283,13 @@ void vp_draw_plane(Vp *vp, Vector2 unit_marker_size, Font font, float font_gap, 
         {0, 1},
     };
 
-    Vector2 line_start = make_vector2(vp->plane_rect.x + vp->plane_rect.width/2, vp->plane_rect.y + vp->plane_rect.height/2);
+    Vector2 line_start = make_vec2(vp->plane_rect.x + vp->plane_rect.width/2, vp->plane_rect.y + vp->plane_rect.height/2);
     for (size_t i = 0;  i < ARRAY_LEN(directions); ++i) {
         for (size_t j = 1; j < vp->unit_count+1; ++j) {
             int xdir = directions[i][0];
             int ydir = directions[i][1];
 
-            Vector2 curr_pos = make_vector2(
+            Vector2 curr_pos = make_vec2(
                 line_start.x + (j*(vp->plane_rect.width/2 / vp->unit_count))*xdir,
                 line_start.y + (j*(vp->plane_rect.height/2 / vp->unit_count))*ydir);
 
@@ -308,7 +309,7 @@ void vp_draw_plane(Vp *vp, Vector2 unit_marker_size, Font font, float font_gap, 
             Vector2 text_size = MeasureTextEx(font, coordinate_text, font.baseSize, 1);
             DrawTextEx(font,
                        coordinate_text,
-                       make_vector2(step_rect.x + (text_size.x/2 * -abs(xdir) + (text_size.x + font_gap) * -abs(ydir)),
+                       make_vec2(step_rect.x + (text_size.x/2 * -abs(xdir) + (text_size.x + font_gap) * -abs(ydir)),
                                     step_rect.y + (text_size.y/2 * -abs(ydir) + (text_size.y/2 + font_gap) * abs(xdir))), // TODO: document this
                        font.baseSize, 1, step_color);
         }
@@ -334,16 +335,16 @@ void draw_arrow(Vector2 start_point, Vector2 end_point, float thick, float tip_l
     DrawTriangle(end_point, left, right, color);
 }
 
-void vp_draw_vector(Vector2 v, Vector2 start, Vector2 origin, float scalar, Color color)
+void vp_draw_vec(Vector2 v, Vector2 start, Vector2 origin, float scalar, Color color)
 {
     Vector2 cartesian_start = to_cartesian_system(start, origin, scalar);
     Vector2 cartesian_v = to_cartesian_system(v, cartesian_start, scalar);
     draw_arrow(cartesian_start, cartesian_v, 3, 20, 10, color);
 }
 
-void draw_vector_info(Vp_Vector2 v, Vector2 pos, Font font)
+void draw_vec_info(Vp_Vector2 v, Vector2 pos, Font font)
 {
-    DrawTextEx(font, TextFormat("%c = (%.2f, %.2f)", v.name, v.vector.x, v.vector.y), pos, font.baseSize, 1, v.color);
+    DrawTextEx(font, TextFormat("%c = (%.2f, %.2f)", v.name, v.vec.x, v.vec.y), pos, font.baseSize, 1, v.color);
 }
 
 Vector2 to_cartesian_system(Vector2 v, Vector2 start, float scalar)
@@ -367,7 +368,7 @@ float degrees2radians(float degrees)
 Vector2 polar_to_coords(float len, float angle)
 {
     angle = degrees2radians(angle);
-    return make_vector2(len * cos(angle), len * sin(angle));
+    return make_vec2(len * cos(angle), len * sin(angle));
 }
 
 float get_vec_angle(Vector2 v)
@@ -383,11 +384,11 @@ float get_vec_angle(Vector2 v)
 
 // TODO: Make this kind of api easier maybe by providing a struct that stores the vector and the index
 /*
-            Vector2 a_vec = make_vector2(2, 3);
-            Vector2 b_vec = make_vector2(5, -2.25);
-            size_t a_idx = vp_add_vector(&vp, a_vec);
-            size_t b_idx = vp_add_vector(&vp, b_vec);
+            Vector2 a_vec = make_vec2(2, 3);
+            Vector2 b_vec = make_vec2(5, -2.25);
+            size_t a_idx = vp_add_vec(&vp, a_vec);
+            size_t b_idx = vp_add_vec(&vp, b_vec);
             vp_add_dp(&vp, a_idx, b_vec);
             vp_add_dp(&vp, b_idx, a_vec);
-            vp_add_vector(&vp, Vector2Add(a_vec, b_vec));
+            vp_add_vec(&vp, Vector2Add(a_vec, b_vec));
 */
