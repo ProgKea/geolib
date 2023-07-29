@@ -1,5 +1,5 @@
-#ifndef GEOLIB_H_
-#define GEOLIB_H_
+#ifndef VP_H_
+#define VP_H_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -57,16 +57,16 @@ typedef struct {
 
 typedef struct {
     Vector2 vector;
-    Vector2s drawing_points;
+    Vector2s dps;
     Color color;
     char name;
-} Geolib_Vector2;
+} Vp_Vector2;
 
 typedef struct {
-    Geolib_Vector2 *items;
+    Vp_Vector2 *items;
     size_t count;
     size_t capacity;
-} Geolib_Vector2s;
+} Vp_Vector2s;
 
 typedef struct {
     Vector2 vec;
@@ -74,29 +74,29 @@ typedef struct {
 } Dp;
 
 typedef struct {
-    Geolib_Vector2s vectors;
+    Vp_Vector2s vectors;
     Rectangle plane_rect;
     size_t unit_count;
     float step_size;
-} Geolib;
+} Vp;
 
-Geolib geolib_alloc(Rectangle plane_rect, size_t unit_count);
+Vp vp_alloc(Rectangle plane_rect, size_t unit_count);
 
 // `geolib_add_vectors` returns the index of the newly added vector
-size_t geolib_add_vector(Geolib *gl, Vector2 v);
-size_t geolib_add_vector_dps(Geolib *gl, Vector2 v, ...);
+size_t vp_add_vector(Vp *vp, Vector2 v);
+size_t vp_add_vector_dps(Vp *vp, Vector2 v, ...);
 
-void geolib_add_drawing_point(Geolib *gl, size_t idx, Vector2 dp);
-void geolib_add_drawing_points(Geolib *gl, size_t idx, ...);
+void vp_add_dp(Vp *vp, size_t idx, Vector2 dp);
+void vp_add_dps(Vp *vp, size_t idx, ...);
 
-void geolib_draw_plane(Geolib *gl, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color);
-void geolib_clean(Geolib *gl);
-void geolib_draw_vector(Vector2 v, Vector2 start, Vector2 origin, float scalar, Color color);
-void geolib_plot_vec(Geolib *gl, Geolib_Vector2 v);
-void geolib_plot_vecs(Geolib *gl);
-void geolib_draw_vecs_info(Geolib *gl, Vector2 pos, Font font);
-void geolib_update_plane_rect(Geolib *gl, Rectangle new_plane_rect);
-Geolib_Vector2 *geolib_get_vector(Geolib *gl, size_t idx);
+void vp_draw_plane(Vp *vp, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color);
+void vp_clean(Vp *vp);
+void vp_draw_vector(Vector2 v, Vector2 start, Vector2 origin, float scalar, Color color);
+void vp_plot_vec(Vp *vp, Vp_Vector2 v);
+void vp_plot_vecs(Vp *vp);
+void vp_draw_info(Vp *vp, Vector2 pos, Font font);
+void vp_update_plane_rect(Vp *vp, Rectangle new_plane_rect);
+Vp_Vector2 *vp_get_vector(Vp *vp, size_t idx);
 
 Vector2 make_vector2(float x, float y);
 Dp make_dp(float x, float y);
@@ -104,7 +104,7 @@ Dp vec2dp(Vector2 v);
 
 void draw_cross(Rectangle rect, float thick, Color color);
 void draw_arrow(Vector2 start_point, Vector2 end_point, float thick, float tip_len, float tip_width, Color color);
-void draw_vector_info(Geolib_Vector2 v, Vector2 pos, Font font);
+void draw_vector_info(Vp_Vector2 v, Vector2 pos, Font font);
 
 Vector2 to_cartesian_system(Vector2 v, Vector2 start, float scalar);
 float radians2degrees(float radians);
@@ -113,9 +113,9 @@ Vector2 polar_to_coords(float len, float angle);
 
 float get_vec_angle(Vector2 v);
 
-#endif  // GEOLIB_H_
+#endif  // VP_H_
 
-#ifdef GEOLIB_IMPLEMENTATION
+#ifdef VP_IMPLEMENTATION
 
 const int vec_name_pool[] = {
     'A',
@@ -141,33 +141,33 @@ const Color color_pool[] = {
 
 static_assert(ARRAY_LEN(vec_name_pool) == ARRAY_LEN(color_pool), "The pools are not equal in size, please make sure they are");
 
-Geolib geolib_alloc(Rectangle plane_rect, size_t unit_count)
+Vp vp_alloc(Rectangle plane_rect, size_t unit_count)
 {
-    Geolib gl = {0};
-    gl.unit_count = unit_count;
-    gl.plane_rect = plane_rect;
-    gl.step_size = plane_rect.width/2 / unit_count;
-    return gl;
+    Vp vp = {0};
+    vp.unit_count = unit_count;
+    vp.plane_rect = plane_rect;
+    vp.step_size = plane_rect.width/2 / unit_count;
+    return vp;
 }
 
-void geolib_clean(Geolib *gl)
+void vp_clean(Vp *vp)
 {
-    da_reset(&gl->vectors);
+    da_reset(&vp->vectors);
 }
 
-// TODO: return the pointer to the Geolib_Vector instead of the index
-size_t geolib_add_vector(Geolib *gl, Vector2 v)
+// TODO: return the pointer to the Vp_Vector instead of the index
+size_t vp_add_vector(Vp *vp, Vector2 v)
 {
-    return geolib_add_vector_dps(gl, v, make_dp(0, 0));
+    return vp_add_vector_dps(vp, v, make_dp(0, 0));
 }
 
 // TODO: expect NULL as the last argument instead of accepting the number of arguments
-size_t geolib_add_vector_dps(Geolib *gl, Vector2 v, ...)
+size_t vp_add_vector_dps(Vp *vp, Vector2 v, ...)
 {
-    size_t pool_index = fmodf(gl->vectors.count, ARRAY_LEN(color_pool));
-    Geolib_Vector2 geolib_vector = (Geolib_Vector2) {
+    size_t pool_index = fmodf(vp->vectors.count, ARRAY_LEN(color_pool));
+    Vp_Vector2 vp_vector = (Vp_Vector2) {
         .vector = v,
-        .drawing_points = {0},
+        .dps = {0},
         .color = color_pool[pool_index],
         .name = vec_name_pool[pool_index]
     };
@@ -176,70 +176,70 @@ size_t geolib_add_vector_dps(Geolib *gl, Vector2 v, ...)
     va_start(args, v);
     Dp curr_dp = va_arg(args, Dp);
     while (curr_dp.created == true) {
-        da_append(&geolib_vector.drawing_points, curr_dp.vec);
+        da_append(&vp_vector.dps, curr_dp.vec);
         curr_dp = va_arg(args, Dp);
     }
     va_end(args);
 
-    da_append(&gl->vectors, geolib_vector);
-    return gl->vectors.count-1;
+    da_append(&vp->vectors, vp_vector);
+    return vp->vectors.count-1;
 }
 
-void geolib_add_drawing_point(Geolib *gl, size_t idx, Vector2 dp) // TODO: implement another function like this that accepts indexes instead of Vector2
+void vp_add_dp(Vp *vp, size_t idx, Vector2 dp) // TODO: implement another function like this that accepts indexes instead of Vector2
 {
-    geolib_add_drawing_points(gl, idx, 1, dp);
+    vp_add_dps(vp, idx, 1, dp);
 }
 
-void geolib_add_drawing_points(Geolib *gl, size_t idx, ...)
+void vp_add_dps(Vp *vp, size_t idx, ...)
 {
-    Geolib_Vector2 *glv = geolib_get_vector(gl, idx);
+    Vp_Vector2 *vpv = vp_get_vector(vp, idx);
 
     va_list args;
     va_start(args, idx);
     Dp curr_dp = va_arg(args, Dp);
     while (curr_dp.created) {
-        da_append(&glv->drawing_points, curr_dp.vec);
+        da_append(&vpv->dps, curr_dp.vec);
         curr_dp = va_arg(args, Dp);
     }
     va_end(args);
 }
 
-void geolib_plot_vec(Geolib *gl, Geolib_Vector2 v)
+void vp_plot_vec(Vp *vp, Vp_Vector2 v)
 {
-    Vector2 plane_center = make_vector2(gl->plane_rect.x + gl->plane_rect.width/2,
-                                        gl->plane_rect.y + gl->plane_rect.height/2);
+    Vector2 plane_center = make_vector2(vp->plane_rect.x + vp->plane_rect.width/2,
+                                        vp->plane_rect.y + vp->plane_rect.height/2);
 
-    for (size_t i = 0; i < v.drawing_points.count; ++i) {
-        geolib_draw_vector(v.vector, v.drawing_points.items[i], plane_center, gl->step_size, v.color);
+    for (size_t i = 0; i < v.dps.count; ++i) {
+        vp_draw_vector(v.vector, v.dps.items[i], plane_center, vp->step_size, v.color);
     }
 }
 
-void geolib_plot_vecs(Geolib *gl)
+void vp_plot_vecs(Vp *vp)
 {
-    for (size_t i = 0; i < gl->vectors.count; ++i) {
-        geolib_plot_vec(gl, gl->vectors.items[i]);
+    for (size_t i = 0; i < vp->vectors.count; ++i) {
+        vp_plot_vec(vp, vp->vectors.items[i]);
     }
 }
 
 // TODO: Make this function accept a rectangle in which it should fit
-void geolib_draw_vecs_info(Geolib *gl, Vector2 pos, Font font)
+void vp_draw_info(Vp *vp, Vector2 pos, Font font)
 {
-    for (size_t i = 0; i < gl->vectors.count; ++i) {
-        draw_vector_info(gl->vectors.items[i], pos, font);
+    for (size_t i = 0; i < vp->vectors.count; ++i) {
+        draw_vector_info(vp->vectors.items[i], pos, font);
         pos.y += font.baseSize;
     }
 }
 
-void geolib_update_plane_rect(Geolib *gl, Rectangle new_plane_rect)
+void vp_update_plane_rect(Vp *vp, Rectangle new_plane_rect)
 {
-    gl->plane_rect = new_plane_rect;
-    gl->step_size = gl->plane_rect.width/2 / gl->unit_count;
+    vp->plane_rect = new_plane_rect;
+    vp->step_size = vp->plane_rect.width/2 / vp->unit_count;
 }
 
-Geolib_Vector2 *geolib_get_vector(Geolib *gl, size_t idx)
+Vp_Vector2 *vp_get_vector(Vp *vp, size_t idx)
 {
-    assert(gl->vectors.count > idx);
-    return &gl->vectors.items[idx];
+    assert(vp->vectors.count > idx);
+    return &vp->vectors.items[idx];
 }
 
 Vector2 make_vector2(float x, float y)
@@ -271,9 +271,9 @@ void draw_cross(Rectangle rect, float thick, Color color)
                make_vector2(rect.x + rect.width/2, rect.y + rect.height), thick, color);
 }
 
-void geolib_draw_plane(Geolib *gl, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color)
+void vp_draw_plane(Vp *vp, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color)
 {
-    draw_cross(gl->plane_rect, 2, cross_color);
+    draw_cross(vp->plane_rect, 2, cross_color);
 
     int directions[4][2] = {
         {-1, 0},
@@ -282,15 +282,15 @@ void geolib_draw_plane(Geolib *gl, Vector2 unit_marker_size, Font font, float fo
         {0, 1},
     };
 
-    Vector2 line_start = make_vector2(gl->plane_rect.x + gl->plane_rect.width/2, gl->plane_rect.y + gl->plane_rect.height/2);
+    Vector2 line_start = make_vector2(vp->plane_rect.x + vp->plane_rect.width/2, vp->plane_rect.y + vp->plane_rect.height/2);
     for (size_t i = 0;  i < ARRAY_LEN(directions); ++i) {
-        for (size_t j = 1; j < gl->unit_count+1; ++j) {
+        for (size_t j = 1; j < vp->unit_count+1; ++j) {
             int xdir = directions[i][0];
             int ydir = directions[i][1];
 
             Vector2 curr_pos = make_vector2(
-                line_start.x + (j*(gl->plane_rect.width/2 / gl->unit_count))*xdir,
-                line_start.y + (j*(gl->plane_rect.height/2 / gl->unit_count))*ydir);
+                line_start.x + (j*(vp->plane_rect.width/2 / vp->unit_count))*xdir,
+                line_start.y + (j*(vp->plane_rect.height/2 / vp->unit_count))*ydir);
 
             Rectangle step_rect = (Rectangle) {
                 .x = curr_pos.x,
@@ -315,10 +315,10 @@ void geolib_draw_plane(Geolib *gl, Vector2 unit_marker_size, Font font, float fo
     }
 }
 
-void geolib_plot(Geolib *gl, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color)
+void vp_plot(Vp *vp, Vector2 unit_marker_size, Font font, float font_gap, Color cross_color, Color step_color)
 {
-    geolib_draw_plane(gl, unit_marker_size, font, font_gap, cross_color, step_color);
-    geolib_plot_vecs(gl);
+    vp_draw_plane(vp, unit_marker_size, font, font_gap, cross_color, step_color);
+    vp_plot_vecs(vp);
 }
 
 void draw_arrow(Vector2 start_point, Vector2 end_point, float thick, float tip_len, float tip_width, Color color)
@@ -334,14 +334,14 @@ void draw_arrow(Vector2 start_point, Vector2 end_point, float thick, float tip_l
     DrawTriangle(end_point, left, right, color);
 }
 
-void geolib_draw_vector(Vector2 v, Vector2 start, Vector2 origin, float scalar, Color color)
+void vp_draw_vector(Vector2 v, Vector2 start, Vector2 origin, float scalar, Color color)
 {
     Vector2 cartesian_start = to_cartesian_system(start, origin, scalar);
     Vector2 cartesian_v = to_cartesian_system(v, cartesian_start, scalar);
     draw_arrow(cartesian_start, cartesian_v, 3, 20, 10, color);
 }
 
-void draw_vector_info(Geolib_Vector2 v, Vector2 pos, Font font)
+void draw_vector_info(Vp_Vector2 v, Vector2 pos, Font font)
 {
     DrawTextEx(font, TextFormat("%c = (%.2f, %.2f)", v.name, v.vector.x, v.vector.y), pos, font.baseSize, 1, v.color);
 }
@@ -375,7 +375,7 @@ float get_vec_angle(Vector2 v)
     return radians2degrees(atan2f(v.y, v.x));
 }
 
-#endif // GEOLIB_IMPLEMENTATION
+#endif // VP_IMPLEMENTATION
 
 // TODO: make this library library agnostic: This library should work with other libraries such as sdl2
 // TODO: add functions to help with drawing the same vector at multiple positions (the user should be able to define multiple starting positions for each vector)
@@ -385,9 +385,9 @@ float get_vec_angle(Vector2 v)
 /*
             Vector2 a_vec = make_vector2(2, 3);
             Vector2 b_vec = make_vector2(5, -2.25);
-            size_t a_idx = geolib_add_vector(&gl, a_vec);
-            size_t b_idx = geolib_add_vector(&gl, b_vec);
-            geolib_add_drawing_point(&gl, a_idx, b_vec);
-            geolib_add_drawing_point(&gl, b_idx, a_vec);
-            geolib_add_vector(&gl, Vector2Add(a_vec, b_vec));
+            size_t a_idx = vp_add_vector(&vp, a_vec);
+            size_t b_idx = vp_add_vector(&vp, b_vec);
+            vp_add_dp(&vp, a_idx, b_vec);
+            vp_add_dp(&vp, b_idx, a_vec);
+            vp_add_vector(&vp, Vector2Add(a_vec, b_vec));
 */
