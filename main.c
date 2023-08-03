@@ -74,5 +74,3 @@ int main(void)
     UnloadFont(font);
     return 0;
 }
-
-// TODO: force the user to call `vp_clean`
